@@ -480,7 +480,10 @@ SIMFS_ERROR simfsDeleteFile(SIMFS_NAME_TYPE fileName)
 SIMFS_ERROR simfsGetFileInfo(SIMFS_NAME_TYPE fileName, SIMFS_FILE_DESCRIPTOR_TYPE *infoBuffer)
 {
     // TODO: implement
-
+    unsigned long fileIndex = hash(fileName);
+    SIMFS_DIR_ENT *entry = simfsContext->directory[fileIndex];
+    if (!entry)
+        return SIMFS_NOT_FOUND_ERROR;
     return SIMFS_NO_ERROR;
 }
 
@@ -534,7 +537,81 @@ SIMFS_ERROR simfsGetFileInfo(SIMFS_NAME_TYPE fileName, SIMFS_FILE_DESCRIPTOR_TYP
 SIMFS_ERROR simfsOpenFile(SIMFS_NAME_TYPE fileName, SIMFS_FILE_HANDLE_TYPE *fileHandle)
 {
     // TODO: implement
+    struct fuse_context *context = simfs_debug_get_context();
+    // must i get current working directory?
+    SIMFS_INDEX_TYPE fileIndex = getFile(fileName);
+    if (fileIndex == SIMFS_INVALID_INDEX)
+        return SIMFS_NOT_FOUND_ERROR;
+    SIMFS_BLOCK_TYPE file;
 
+    if (simfsContext->directory[fileIndex]->globalOpenFileTableIndex != SIMFS_INVALID_OPEN_FILE_TABLE_INDEX) // which means there's an open file
+        simfsContext->globalOpenFileTable[simfsContext->directory[fileIndex]->globalOpenFileTableIndex].referenceCount++;
+    else
+    {
+        // we must find an empty slot
+        file = simfsVolume->block[simfsContext->directory[fileIndex]->nodeReference];
+        for (int i = 0; i < SIMFS_MAX_NUMBER_OF_OPEN_FILES; i++)
+        {
+            if (simfsContext->globalOpenFileTable[i].referenceCount == 0) // probably wrong way to find empty spot
+            {
+                SIMFS_OPEN_FILE_GLOBAL_TABLE_TYPE newOpenFile;
+                newOpenFile.referenceCount = 1;
+                newOpenFile.size = file.content.fileDescriptor.size;
+                newOpenFile.type = file.type;
+                newOpenFile.owner = file.content.fileDescriptor.owner;
+                newOpenFile.accessRights = file.content.fileDescriptor.accessRights;
+                newOpenFile.lastModificationTime = file.content.fileDescriptor.lastModificationTime;
+                newOpenFile.lastAccessTime = file.content.fileDescriptor.lastAccessTime;
+                newOpenFile.creationTime = file.content.fileDescriptor.creationTime;
+                newOpenFile.fileDescriptor = file.content.fileDescriptor.block_ref;
+                simfsContext->directory[fileIndex]->globalOpenFileTableIndex = i;
+                break;
+            }
+        }
+    }
+    // now check to see if process has it's pcb in the list of process control blocks
+    SIMFS_PROCESS_CONTROL_BLOCK_TYPE *controlBlock = simfsContext->processControlBlocks;
+    while (controlBlock != NULL)
+    {
+        if (controlBlock->pid == context->pid)
+            break;
+        controlBlock = controlBlock->next;
+    }
+
+    if (controlBlock == NULL) // meaning entry does not exist
+    {
+        SIMFS_PROCESS_CONTROL_BLOCK_TYPE *newControlBlock = malloc(sizeof(SIMFS_PROCESS_CONTROL_BLOCK_TYPE));
+        newControlBlock->numberOfOpenFiles = 1;
+        newControlBlock->currentWorkingDirectory = simfsVolume->superblock.attr.rootNodeIndex;
+        newControlBlock->pid = context->pid; // needs to be simulated
+        newControlBlock->next = simfsContext->processControlBlocks;
+        controlBlock = newControlBlock;
+    }
+    for (int i = 0; i < SIMFS_MAX_NUMBER_OF_OPEN_FILES_PER_PROCESS; i++)
+    {
+        if (controlBlock->openFileTable[i].globalOpenFileTableIndex == simfsContext->directory[fileIndex]->globalOpenFileTableIndex) // meaning that it's been opened
+        {
+            *fileHandle = i;
+            return SIMFS_DUPLICATE_ERROR;
+        }
+    }
+    // if doesn't exist in the per-process open file table, then create a new entry in the local table
+    // must search for empty slot in the table
+    for (int i = 0; i < SIMFS_MAX_NUMBER_OF_OPEN_FILES_PER_PROCESS; i++)
+    {
+        if (controlBlock->openFileTable[i].globalOpenFileTableIndex == SIMFS_INVALID_OPEN_FILE_TABLE_INDEX) // meaning it's open
+        {
+            controlBlock->openFileTable[i].globalOpenFileTableIndex = simfsContext->directory[fileIndex]->globalOpenFileTableIndex;
+            controlBlock->openFileTable[i].accessRights = file.content.fileDescriptor.accessRights;
+            *fileHandle = i;
+            break;
+        }
+    }
+
+    if (controlBlock->numberOfOpenFiles == SIMFS_MAX_NUMBER_OF_OPEN_FILES_PER_PROCESS)
+        return SIMFS_ALLOC_ERROR;
+    // checking if global open file table is full
+    // ? how
     return SIMFS_NO_ERROR;
 }
 

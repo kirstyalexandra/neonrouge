@@ -271,7 +271,6 @@ unsigned short simfsFindFreeBlock(unsigned char *bitvector);
 
 // my functions
 void traverseHierarchy(SIMFS_INDEX_TYPE index);
-void traverseHierarchy(SIMFS_INDEX_TYPE index);
 SIMFS_INDEX_TYPE getCurrentDirectory(struct fuse_context *context);
 SIMFS_BLOCK_TYPE initBlock(SIMFS_NAME_TYPE fileName, SIMFS_CONTENT_TYPE type, struct fuse_context *context);
 inline void setTime(SIMFS_BLOCK_TYPE block);
