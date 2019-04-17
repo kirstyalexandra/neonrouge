@@ -565,6 +565,8 @@ SIMFS_ERROR simfsOpenFile(SIMFS_NAME_TYPE fileName, SIMFS_FILE_HANDLE_TYPE *file
                 newOpenFile.creationTime = file.content.fileDescriptor.creationTime;
                 newOpenFile.fileDescriptor = file.content.fileDescriptor.block_ref;
                 simfsContext->directory[fileIndex]->globalOpenFileTableIndex = i;
+                simfsContext->globalOpenFileTable[i] = newOpenFile;
+                //memcpy(simfsContext->globalOpenFileTable[i], newOpenFile, sizeof(SIMFS_OPEN_FILE_GLOBAL_TABLE_TYPE));
                 break;
             }
         }
@@ -676,6 +678,8 @@ SIMFS_ERROR simfsWriteFile(SIMFS_FILE_HANDLE_TYPE fileHandle, char *writeBuffer)
 SIMFS_ERROR simfsReadFile(SIMFS_FILE_HANDLE_TYPE fileHandle, char **readBuffer)
 {
     // TODO: implement
+
+
 
     return SIMFS_NO_ERROR;
 }
