@@ -612,8 +612,13 @@ SIMFS_ERROR simfsOpenFile(SIMFS_NAME_TYPE fileName, SIMFS_FILE_HANDLE_TYPE *file
 
     if (controlBlock->numberOfOpenFiles == SIMFS_MAX_NUMBER_OF_OPEN_FILES_PER_PROCESS)
         return SIMFS_ALLOC_ERROR;
-    // checking if global open file table is full
-    // ? how
+    // checking if global open file table is full ? how
+    // gotta iterate to check if global open file table is empty
+    int globalNumOfOpenFiles = 0;
+    for (int i = 0; i < SIMFS_MAX_NUMBER_OF_OPEN_FILES; i++)
+    {
+        if
+    }
     return SIMFS_NO_ERROR;
 }
 
